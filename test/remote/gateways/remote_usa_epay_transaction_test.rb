@@ -6,7 +6,7 @@ class RemoteUsaEpayTransactionTest < Test::Unit::TestCase
     @creditcard = credit_card('4000100011112224')
     @declined_card = credit_card('4000300011112220')
     @credit_card_with_track_data = credit_card_with_track_data('4000100011112224')
-    @options = { :billing_address => address(:zip => "27614", :state => "NC") }
+    @options = { :billing_address => address(:zip => "27614", :state => "NC"), :manual_entry => false }
     @amount = 100
   end
 
@@ -22,6 +22,12 @@ class RemoteUsaEpayTransactionTest < Test::Unit::TestCase
     assert_success response
   end
 
+   def test_successful_purchase_with_manual_entry
+    assert response = @gateway.purchase(@amount, @creditcard, @options.merge(:manual_entry => true))
+    assert_equal 'Success', response.message
+    assert_success response
+   end
+
   def test_successful_purchase_with_extra_details
     assert response = @gateway.purchase(@amount, @creditcard, @options.merge(:order_id => generate_unique_id, :description => "socool"))
     assert_equal 'Success', response.message
@@ -35,7 +41,7 @@ class RemoteUsaEpayTransactionTest < Test::Unit::TestCase
     assert response = @gateway.purchase(@amount, @declined_card, @options.merge(:order_id => generate_unique_id))
     assert_failure response
     assert_match(/declined/i, response.message)
-    assert Gateway::STANDARD_ERROR_CODE[:card_declined], response.error_code 
+    assert Gateway::STANDARD_ERROR_CODE[:card_declined], response.error_code
   end
 
   def test_authorize_and_capture

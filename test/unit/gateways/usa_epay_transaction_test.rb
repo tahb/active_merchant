@@ -9,7 +9,8 @@ class UsaEpayTransactionTest < Test::Unit::TestCase
     @credit_card = credit_card('4242424242424242')
     @options = {
       :billing_address  => address,
-      :shipping_address => address
+      :shipping_address => address,
+      :manual_entry => false
     }
     @amount = 100
   end
@@ -185,6 +186,19 @@ class UsaEpayTransactionTest < Test::Unit::TestCase
       assert response = @gateway.purchase(@amount, @credit_card, @options)
       assert_success response
     end
+  end
+
+  def test_manual_entry_is_properly_indicated_on_purchase
+    response = stub_comms do
+      @gateway.purchase(@amount, @credit_card, @options.merge(:manual_entry => true))
+    end.check_request do |endpoint, data, headers|
+
+      assert_match %r{UMcard=4242424242424242},  data
+      assert_match %r{UMcardpresent=true},       data
+
+    end.respond_with(successful_purchase_response)
+
+    assert_success response
   end
 
   def test_does_not_raise_error_on_missing_values

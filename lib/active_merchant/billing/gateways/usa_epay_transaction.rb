@@ -48,7 +48,7 @@ module ActiveMerchant #:nodoc:
 
         add_amount(post, money)
         add_invoice(post, options)
-        add_credit_card(post, credit_card)
+        add_credit_card(post, credit_card, options)
         unless credit_card.track_data.present?
           add_address(post, credit_card, options)
           add_customer_data(post, options)
@@ -63,7 +63,7 @@ module ActiveMerchant #:nodoc:
 
         add_amount(post, money)
         add_invoice(post, options)
-        add_credit_card(post, credit_card)
+        add_credit_card(post, credit_card, options)
         unless credit_card.track_data.present?
           add_address(post, credit_card, options)
           add_customer_data(post, options)
@@ -170,7 +170,7 @@ module ActiveMerchant #:nodoc:
         post[:description]  = options[:description]
       end
 
-      def add_credit_card(post, credit_card)
+      def add_credit_card(post, credit_card, options)
         if credit_card.track_data.present?
           post[:magstripe] = credit_card.track_data
           post[:cardpresent] = true
@@ -178,7 +178,8 @@ module ActiveMerchant #:nodoc:
           post[:card]   = credit_card.number
           post[:cvv2]   = credit_card.verification_value if credit_card.verification_value?
           post[:expir]  = expdate(credit_card)
-          post[:name]   = credit_card.name
+          post[:name]   = credit_card.name unless credit_card.name.blank?
+          post[:cardpresent] = true if options[:manual_entry]
         end
       end
 
@@ -256,4 +257,3 @@ module ActiveMerchant #:nodoc:
     end
   end
 end
-
