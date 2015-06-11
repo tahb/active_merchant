@@ -156,7 +156,7 @@ module ActiveMerchant #:nodoc:
         add_address(post, payment_source, options)
         add_customer_data(post, options)
         add_money(post, money, options)
-        commit('RES', post)
+        commit('RES', post, :order)
       end
 
       # Verify and transfer the specified amount.
@@ -168,7 +168,7 @@ module ActiveMerchant #:nodoc:
         add_address(post, payment_source, options)
         add_customer_data(post, options)
         add_money(post, money, options)
-        commit(action, post)
+        commit(action, post, :order)
       end
 
       # Complete a previously authorized transaction.
@@ -179,14 +179,14 @@ module ActiveMerchant #:nodoc:
         add_invoice(post, options)
         add_customer_data(post, options)
         add_money(post, money, options)
-        commit(action, post)
+        commit(action, post, :order)
       end
 
       # Cancels a previously authorized transaction.
       def void(identification, options = {})
         post = {}
         add_authorization(post, reference_from(identification))
-        commit('DES', post)
+        commit('DES', post, :maintenance)
       end
 
       # Credit the specified account by a specific amount.
@@ -229,7 +229,7 @@ module ActiveMerchant #:nodoc:
         post = {}
         add_authorization(post, reference_from(payment_target))
         add_money(post, money, options)
-        commit('RFD', post)
+        commit('RFD', post, :maintenance)
       end
 
       def perform_non_referenced_credit(money, payment_target, options = {})
@@ -240,7 +240,7 @@ module ActiveMerchant #:nodoc:
         add_address(post, payment_target, options)
         add_customer_data(post, options)
         add_money(post, money, options)
-        commit('RFD', post)
+        commit('RFD', post, :maintenance)
       end
 
       def add_payment_source(post, payment_source, options)
