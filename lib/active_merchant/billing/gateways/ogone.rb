@@ -334,12 +334,12 @@ module ActiveMerchant #:nodoc:
         response
       end
 
-      def commit(action, parameters)
+      def commit(action, parameters, end_point = nil)
         add_pair parameters, 'PSPID',  @options[:login]
         add_pair parameters, 'USERID', @options[:user]
         add_pair parameters, 'PSWD',   @options[:password]
 
-        response = parse(ssl_post(url(parameters['PAYID']), post_data(action, parameters)))
+        response = parse(ssl_post(url(OGonePath.new(end_point)), post_data(action, parameters)))
 
         options = {
           :authorization => [response["PAYID"], action].join(";"),
@@ -350,8 +350,8 @@ module ActiveMerchant #:nodoc:
         OgoneResponse.new(successful?(response), message_from(response), response, options)
       end
 
-      def url(payid)
-        (test? ? test_url : live_url) + (payid ? "maintenancedirect.asp" : "orderdirect.asp")
+      def url(path = OGonePath.new)
+        (test? ? test_url : live_url) + path.to_s
       end
 
       def successful?(response)
@@ -431,5 +431,18 @@ module ActiveMerchant #:nodoc:
         @params['ALIAS']
       end
     end
+
+    class OGonePath < Struct.new(:end_point)
+      def to_s
+        case end_point
+        when :maintenance then "maintenancedirect.asp"
+        when :query then "querydirect.asp"
+        when :order then "orderdirect.asp"
+        else
+          "#"
+        end
+      end
+    end
+
   end
 end
