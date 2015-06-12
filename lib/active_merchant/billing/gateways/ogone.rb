@@ -213,6 +213,13 @@ module ActiveMerchant #:nodoc:
         response
       end
 
+      # Fetch current state of a transaction
+      def reconcile(payment_source)
+        post = {}
+        add_authorization(post, payment_source)
+        commit(nil, post, :query)
+      end
+
       private
 
       def reference_from(authorization)
