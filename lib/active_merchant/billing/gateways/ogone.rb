@@ -214,9 +214,13 @@ module ActiveMerchant #:nodoc:
       end
 
       # Fetch current state of a transaction
-      def reconcile(payment_source)
+      def reconcile(key = "PAYID", value)
         post = {}
-        add_authorization(post, payment_source)
+        if key.eql? "ORDERID"
+          add_merchant_reference(post, value)
+        else
+          add_authorization(post, value)
+        end
         commit(nil, post, :query)
       end
 
@@ -295,6 +299,10 @@ module ActiveMerchant #:nodoc:
 
       def add_authorization(post, authorization)
         add_pair post, 'PAYID', authorization
+      end
+
+      def add_merchant_reference(post, merchant_reference)
+        add_pair post, 'ORDERID', merchant_reference
       end
 
       def add_money(post, money, options)

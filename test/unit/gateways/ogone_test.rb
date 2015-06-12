@@ -213,11 +213,26 @@ class OgoneTest < Test::Unit::TestCase
     end
   end
 
-  def test_successful_reconcile
+  def test_successful_reconcile_with_pay_id
+    @gateway.expects(:add_pair).at_least(1)
+    @gateway.expects(:add_pair).with(anything, 'PAYID', '3025473')
+    @gateway.expects(:add_pair).with(anything, 'ORDERID', '1234961140253559268757474').never
     @gateway.expects(:ssl_post).returns(successful_reconcile_response)
-    assert response = @gateway.reconcile("3025473")
+    assert response = @gateway.reconcile("PAYID", "3025473")
     assert_success response
     assert_equal '3025473;', response.authorization
+    assert_equal '9', response.params["STATUS"]
+    assert response.test?
+  end
+
+  def test_successful_reconcile_with_merchant_reference
+    @gateway.expects(:add_pair).at_least(1)
+    @gateway.expects(:add_pair).with(anything, 'ORDERID', '1234961140253559268757474')
+    @gateway.expects(:add_pair).with(anything, 'PAYID', '3025473').never
+    @gateway.expects(:ssl_post).returns(successful_reconcile_response)
+    assert response = @gateway.reconcile("ORDERID", "1234961140253559268757474")
+    assert_success response
+    assert_equal "1234961140253559268757474", response.order_id
     assert_equal '9', response.params["STATUS"]
     assert response.test?
   end
