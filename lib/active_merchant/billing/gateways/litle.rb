@@ -109,6 +109,7 @@ module ActiveMerchant #:nodoc:
           doc.registerTokenRequest(transaction_attributes(options)) do
             doc.orderId(truncate(options[:order_id], 24))
             doc.accountNumber(creditcard.number)
+            doc.cardValidationNum(creditcard.verification_value) if creditcard.verification_value
           end
         end
 
@@ -163,6 +164,7 @@ module ActiveMerchant #:nodoc:
         add_payment_method(doc, payment_method)
         add_pos(doc, payment_method)
         add_descriptor(doc, options)
+        add_debt_repayment(doc, options)
       end
 
       def add_descriptor(doc, options)
@@ -172,6 +174,10 @@ module ActiveMerchant #:nodoc:
             doc.descriptor(options[:descriptor_name]) if options[:descriptor_name]
           end
         end
+      end
+
+      def add_debt_repayment(doc, options)
+        doc.debtRepayment(true) if options[:debt_repayment] == true
       end
 
       def add_payment_method(doc, payment_method)
@@ -261,6 +267,12 @@ module ActiveMerchant #:nodoc:
               name = "#{node.name}_#{childnode.name}"
               parsed[name.to_sym] = childnode.text
             end
+          end
+        end
+
+        if parsed.empty?
+          %w(response message).each do |attribute|
+            parsed[attribute.to_sym] = doc.xpath("//litleOnlineResponse").attribute(attribute).value
           end
         end
 

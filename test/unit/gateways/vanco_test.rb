@@ -6,6 +6,7 @@ class VancoTest < Test::Unit::TestCase
   def setup
     @gateway = VancoGateway.new(user_id: 'login', password: 'password', client_id: 'client_id')
     @credit_card = credit_card
+    @check = check
     @amount = 100
     @options = {
       order_id: '1',
@@ -19,7 +20,6 @@ class VancoTest < Test::Unit::TestCase
       @gateway.purchase(@amount, @credit_card, @options)
     end.respond_with(successful_login_response, successful_purchase_response)
 
-    response = @gateway.purchase(@amount, @credit_card, @options)
     assert_success response
     assert_equal '14949117|15756594|16136938', response.authorization
     assert_equal "Success", response.message
@@ -45,29 +45,56 @@ class VancoTest < Test::Unit::TestCase
       @gateway.purchase(@amount, @credit_card, @options)
     end.respond_with(successful_login_response, failed_purchase_response)
 
-    response = @gateway.purchase(@amount, @credit_card, @options)
     assert_failure response
-    assert_equal "286", response.error_code
+    assert_equal "286", response.params["error_codes"]
+  end
+
+  def test_failed_purchase_multiple_errors
+    response = stub_comms do
+      @gateway.purchase(@amount, @credit_card, @options)
+    end.respond_with(successful_login_response, failed_purchase_multiple_errors_response)
+
+    assert_failure response
+    assert_equal "Client not set up for International Credit Card Processing. Another Error.", response.message
+    assert_equal "286, 331", response.params["error_codes"]
+  end
+
+  def test_successful_purchase_echeck
+    response = stub_comms do
+      @gateway.purchase(@amount, @check, @options)
+    end.respond_with(successful_login_response, successful_purchase_echeck_response)
+
+    assert_success response
+    assert_equal '14949514|15757035|16138421', response.authorization
+    assert_equal "Success", response.message
+    assert response.test?
+  end
+
+  def test_failed_purchase_echeck
+    response = stub_comms do
+      @gateway.purchase(@amount, @check, @options)
+    end.respond_with(successful_login_response, failed_purchase_echeck_response)
+
+    assert_failure response
+    assert_equal "178", response.params["error_codes"]
   end
 
   def test_successful_refund
     response = stub_comms do
-      @gateway.purchase(@amount, @credit_card, @options)
+      @gateway.refund(@amount, "authoriziation")
     end.respond_with(successful_login_response, successful_refund_response)
 
-    response = @gateway.refund(@amount, "authoriziation")
     assert_success response
     assert_equal "Success", response.message
   end
 
   def test_failed_refund
     response = stub_comms do
-      @gateway.purchase(@amount, @credit_card, @options)
+      @gateway.refund(@amount, "authorization")
     end.respond_with(successful_login_response, failed_refund_response)
 
-    response = @gateway.purchase(@amount, @credit_card, @options)
     assert_failure response
-    assert_equal "575", response.error_code
+    assert_equal "575", response.params["error_codes"]
   end
 
   def test_scrub
@@ -111,9 +138,27 @@ class VancoTest < Test::Unit::TestCase
      )
   end
 
+  def successful_purchase_echeck_response
+    %(
+      <?xml version=\"1.0\" encoding=\"UTF-8\"  ?><VancoWS><Auth><RequestID>186f2495a292b62a32435fcb8cd869</RequestID><RequestTime>2015-05-14 15:52:09 -0400</RequestTime><RequestType>EFTAddCompleteTransaction</RequestType><Signature></Signature><SessionID>38b674bb2301c570a6034c10488cc59ba5b2f9f7</SessionID><Version>2</Version></Auth><Response><StartDate>2015-05-18</StartDate><CustomerRef>14949514</CustomerRef><PaymentMethodRef>15757035</PaymentMethodRef><TransactionRef>16138421</TransactionRef><TransactionFee></TransactionFee></Response></VancoWS>\n\n
+     )
+  end
+
+  def failed_purchase_echeck_response
+    %(
+      <?xml version="1.0" encoding="UTF-8"  ?><VancoWS><Auth><RequestID>e010cc92dfe411212d7b19c8100ff2</RequestID><RequestTime>2015-05-14 15:56:10 -0400</RequestTime><RequestType>EFTAddCompleteTransaction</RequestType><Signature></Signature><SessionID>160f8eee46ed4683a08cc3009dd19beada6ed225</SessionID><Version>2</Version></Auth><Response><Errors><Error><ErrorCode>178</ErrorCode><ErrorDescription>Invalid Routing Number</ErrorDescription></Error></Errors></Response></VancoWS>
+     )
+  end
+
   def failed_purchase_response
     %(
       <?xml version="1.0" encoding="UTF-8"  ?><VancoWS><Auth><RequestID>8fde1fc5f27a09eeafffe8761c546c</RequestID><RequestTime>2015-05-01 16:13:34 -0400</RequestTime><RequestType>EFTAddCompleteTransaction</RequestType><Signature></Signature><SessionID>ae3a84a0963b83eeb44db13027e37f172e24d939</SessionID><Version>2</Version></Auth><Response><Errors><Error><ErrorCode>286</ErrorCode><ErrorDescription>Client not set up for International Credit Card Processing</ErrorDescription></Error></Errors></Response></VancoWS>
+     )
+  end
+
+  def failed_purchase_multiple_errors_response
+    %(
+      <?xml version="1.0" encoding="UTF-8"  ?> <VancoWS> <Auth> <RequestID> 8fde1fc5f27a09eeafffe8761c546c</RequestID> <RequestTime> 2015-05-01 16:13:34 -0400</RequestTime> <RequestType> EFTAddCompleteTransaction</RequestType> <Signature> </Signature> <SessionID> ae3a84a0963b83eeb44db13027e37f172e24d939</SessionID> <Version> 2</Version> </Auth> <Response> <Errors> <Error> <ErrorCode>286</ErrorCode> <ErrorDescription>Client not set up for International Credit Card Processing</ErrorDescription> </Error> <Error> <ErrorCode>331</ErrorCode> <ErrorDescription>Another Error</ErrorDescription> </Error> </Errors> </Response> </VancoWS>
      )
   end
 

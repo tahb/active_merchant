@@ -32,11 +32,44 @@ class RemoteS5Test < Test::Unit::TestCase
     assert_match %r{Request successfully processed}, response.message
   end
 
+  def test_successful_purchase_sans_cvv
+    @options[:recurring] = true
+    @credit_card.verification_value = nil
+    response = @gateway.purchase(@amount, @credit_card, @options)
+    assert_success response
+    assert_match %r{Request successfully processed}, response.message
+  end
+
+  def test_successful_purchase_with_utf_character
+    card = credit_card('4000100011112224', last_name: 'Wåhlin')
+    response = @gateway.purchase(@amount, card, @options)
+    assert_success response
+    assert_match %r{Request successfully processed}, response.message
+  end
+
+  def test_successful_purchase_without_address
+    response = @gateway.purchase(@amount, @credit_card, {})
+    assert_success response
+    assert_match %r{Request successfully processed}, response.message
+  end
+
   def test_failed_purchase
     @options[:memo] = "800.100.151"
     response = @gateway.purchase(@amount, @declined_card, @options)
     assert_failure response
     assert_equal 'transaction declined (invalid card)', response.message
+  end
+
+  def test_failed_purchase_sans_cvv
+    @credit_card.verification_value = nil
+    response = @gateway.purchase(@amount, @credit_card, @options)
+    assert_failure response
+    assert_match %r{empty CVV .* not allowed}, response.message
+  end
+
+  def test_successful_authorize_without_address
+    auth = @gateway.authorize(@amount, @credit_card, {})
+    assert_success auth
   end
 
   def test_successful_authorize_and_capture
@@ -111,6 +144,28 @@ class RemoteS5Test < Test::Unit::TestCase
     response = @gateway.verify(@declined_card, @options)
     assert_failure response
     assert_match %r{authorization failure}, response.message
+  end
+
+  def test_successful_store
+    response = @gateway.store(@credit_card, @options)
+    assert_success response
+    assert_match %r{Request successfully processed}, response.message
+  end
+
+  def test_purchase_using_stored_card
+    assert response = @gateway.store(@credit_card)
+    assert_success response
+
+    response = @gateway.purchase(@amount, response.authorization, @options)
+    assert_success response
+    assert_match %r{Request successfully processed}, response.message
+  end
+
+  def test_failed_store
+    credit_card = credit_card('4111')
+    response = @gateway.store(credit_card, @options)
+    assert_failure response
+    assert_match %r{invalid creditcard}, response.message
   end
 
   def test_invalid_login
